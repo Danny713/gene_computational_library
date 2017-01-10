@@ -122,8 +122,7 @@ public class CorrelationClient {
         }
         
         try {
-            //Correlate.corrData(pVal, tau, priorityGene, listener);
-            Correlate.corrData_GenEx(listener);
+            Correlate.corrData(pVal, tau, priorityGene, listener);
         } catch (Exception e) {
             System.out.println(e);
             return;

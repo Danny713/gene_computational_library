@@ -1,10 +1,10 @@
 /**
+ * This class was taken directly from the GenEx Project
+ *
  * GenEx GUI SingleGraph
  * Creates a panel with the interactive graph, with the JUNG package
  * 
  * Depends: JUNG: UndirectedSparseGraph, VisualizationViewer + decorators, KKLayout, EditingModalGraphMouse, ResizeListener, Apache: Factory, Transformer
- *
- * This class was taken from the GenEx Project - written by Rachel Xu '17
  **/
 
 /*graph libraries*/

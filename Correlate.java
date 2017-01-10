@@ -6,24 +6,9 @@ import org.rosuda.JRI.REXP;
 import org.rosuda.JRI.RBool;
 import javax.swing.*;
 
-/*
- Multiple instance: R-backend must refer to the correct instance when retrieving priority-gene
- or returning results
- - R requires a specific java object to call the methods
- - requires that we pass the specific instance (not possible, too much overhead)
- 
- 
- *****Future work: write backend in java so that this language barrier doesn't exist
- * 
- Correlate.start(info);
- Correlate.kill();
- Correlate.isInitialized();
- 
- Correlate.corrData();
- Correlate.setPriorityGene();
- Correlate.getCompleteEdgeList();
- */
+/* Some of the logic has been taken from the GenEx Project */
 
+/* Static class to conduct correlational computations */
 public class Correlate {
     private static final String SAFETY = "A";
     
@@ -63,8 +48,6 @@ public class Correlate {
             re.eval("library(WGCNA)");
             re.eval("library(rJava)");
 
-            //re.eval("source('~/Desktop/Princeton/Junior/Independent Work/source_file/GenExR/R/corrData.R')");
-            //re.eval("source('~/Desktop/Princeton/Junior/Independent Work/source_file/GenExR/R/adjacency.R')");
             re.eval("source('./Backend/R/queue.R')");
             re.eval("source('./Backend/R/corrData.R')");
             re.eval("dyn.load('./Backend/src/pvalAndTriFunctions.so')");
@@ -123,18 +106,14 @@ public class Correlate {
             return false;
         }   
 
-        String aggregate = String.format("capture.output(%s <- loadAggDT(\'%s\'))", aggDT, filePath.getAbsolutePath());
-
-        String[] output = re.eval(aggregate).asStringArray();
-
-        for (int i = 0; i < output.length; i++) {
-                        System.out.println(output[i]);
-                    }
+        String aggregate = String.format("%s <- loadAggDT(\'%s\')", aggDT, filePath.getAbsolutePath());
+        re.eval(aggregate);
 
         isAggregated = notNull(aggDT, re);
         return isAggregated;
     }
-    
+
+    /* Initiates the interface using the aggregated data set, filePath. */
     public static boolean start(File filePath) throws Exception {
         if (isInitialized) {
             throw new Exception("Correlational computations are already running");
@@ -155,22 +134,18 @@ public class Correlate {
         }
         return true;
     }
-    
-    /* check when calling start and in R-backend
-     in R-backend: it should be running since the Rengine it is killed otherwise 
-     
-     - check when retrieving priorityGene and returning new edgelist
-     - if not running, call "end" method from R-backend
-     
-     */
+
+    /* Determines if a session is running */
     public static boolean isInitialized() {
         return isInitialized;
     }
     
+    /* Determines if all computations have completed */
     public static boolean hasCompleted() {
         return isCorrelated;
     }
     
+    /* Ends the entire session */
     public static void end() {
         if (isInitialized) {
             endR(re);
@@ -192,70 +167,14 @@ public class Correlate {
             tau = -1;
         }
     }
-    
-    public static void corrData_GenEx(Listener listener) {
-        String correlate = String.format("capture.output( %s <- corrData(%s) )", corrEnv, aggDT);
-        String[] output = re.eval(correlate).asStringArray();
 
-        for (int i = 0; i < output.length; i++) {
-                        System.out.println(output[i]);
-                    }
-
-        isCorrelated = true;
-        System.out.println("finished correlations:" + notNull(corrEnv, re));
-
-        String[] geneList = re.eval(String.format("%s$index", corrEnv)).asStringArray();
-        for (int i = 0; i < geneList.length; i++) {
-            System.out.println(geneList[i]);
-        }
-
-        adjEnv = "hello_world";
-        re.assign("geneList", geneList);
-        String adj = String.format("capture.output( %s <- adjacency(geneList, %s, %f, %f) )", adjEnv, corrEnv, 0.05, 0.9);
-                    output = re.eval(adj).asStringArray();
-
-
-                    for (int i = 0; i < output.length; i++) {
-                        System.out.println(output[i]);
-                    }
-
-        System.out.println("finished adjacency: " + notNull(adjEnv, re));
-
-        int[] first = null;
-        int[] second = null;
-        String[] names = null;
-        float[] values = null;
-        double[] temp = null;
-
-        //check if edge list is empty
-        //get first and second columns
-        String edgelist = adjEnv + "$edgeList";
-        System.out.println(edgelist);
-        first = re.eval(edgelist + "[[1]]").asIntArray();
-        second = re.eval(edgelist + "[[2]]").asIntArray();
-        //get values (as doubles)
-        temp = re.eval(edgelist + "[[3]]").asDoubleArray();
-        System.out.println("should be done");
-        try {
-            values = new float[temp.length];
-            for (int i = 0; i < temp.length; i++) {
-                values[i] = (float) temp[i];
-            }
-        } catch (NullPointerException e) {
-            e.printStackTrace();
-        }
-
-        names = re.eval(String.format("%s$index", corrEnv)).asStringArray();
-
-        edgeList = new EdgeList(first, second, names, values);
-
-        listener.onCompleted();
-    }
-
+    /* Initiates computations based on correlation coefficient threshold, tau,
+     * significance value, pval. Listener is used to notify client */
     public static void corrData(final double pval, final double tau, final Listener listener) throws Exception {
         corrData(pval, tau, null, listener);
     }
     
+    /* Initiate computation with an initial gene of interest, priorityGene */
     public static void corrData(final double pval, final double tau, String priorityGene, final Listener listener) throws Exception {
         if (isAggregated) {
             Correlate.priorityGene = priorityGene;
@@ -268,14 +187,6 @@ public class Correlate {
             Runnable task = new Runnable() {
                 @Override
                 public void run() {
-                    //corelate data if aggregated
-                    /*String correlate = String.format("capture.output( %s <- corrData(%s, %f, %f) )", corrEnv, aggDT, pval, tau);
-                    String[] output = re.eval(correlate).asStringArray();
-
-
-                    for (int i = 0; i < output.length; i++) {
-                        System.out.println(output[i]);
-                    }*/
                     String correlate = String.format("%s <- corrData(%s, %f, %f)", corrEnv, aggDT, pval, tau);
                     re.eval(correlate);
                     //check if successful
@@ -295,18 +206,19 @@ public class Correlate {
             Thread thread = new Thread(task);
             thread.start();
         } else {
-            end(); //ensure that everything is refreshed if aggregation fails
+            end();
             throw new Exception("No correlational computations are running");
         }
     }
     
-    /* Allow user to change the priority gene */
+    /* Set the gene of interest to priority */
     public static void setPriorityGene(String priority) throws Exception {
         if (!isInitialized) throw new Exception("No correlational computations are running");
         priorityGene = priority;
     }
     
-    /* Returns the final edge list*/
+    /* Returns all co-expressed genes with their corresponding p-values. This method should only
+     * be called once all computations have concluded. */
     public static EdgeList getEdgeList() throws Exception {
         if (!isInitialized) 
             throw new Exception("No correlational computations are running");
@@ -314,23 +226,15 @@ public class Correlate {
             throw new Exception("Correlational computations have failed or are still running");
         
         return edgeList;
-
-        /*if (origGeneList == null) {
-            String list = corrEnv+ "$index";
-            origGeneList = re.eval(list).asStringArray();
-        }
-        return getEdgeList(origGeneList);*/
     }
     
-    /* Returns edge list filtered using gene list*/
+    /* Returns all pairs of co-expressed genes, where at least one of the two genes are in the
+     * geneList. This method can be called before all computations have concluded. */
     public static EdgeList getEdgeList(String[] geneList) throws Exception {
         if (!isInitialized) {
             throw new Exception("No correlational computations are running");
         }
-        
-        
         HashSet<String> geneSet = new HashSet<String>(Arrays.asList(geneList));
-        
         ArrayList<Integer> indexList = new ArrayList<Integer>();
         for (int i = 0; i < edgeList.first().length; i++) {
             if (geneSet.contains(edgeList.getFirstName(i)) || geneSet.contains(edgeList.getSecondName(i))) {
@@ -352,6 +256,7 @@ public class Correlate {
         return new EdgeList(first, second, edgeList.names, values);
     }
     
+    /* Construct a gene co-expression network using the provided edgelist */
     public static void graphData(EdgeList edgeList) {
         try {
             SingleGraph sg = new SingleGraph(edgeList, "hello");
@@ -361,7 +266,7 @@ public class Correlate {
         }
     }
     
-    /*output correlation matrix*/
+    /* Save the correlation coefficients to file at filePath */
     public static boolean outCorrMatrix(String filePath) throws Exception {
         boolean success = false;
         
@@ -383,7 +288,7 @@ public class Correlate {
         
     }
     
-    /*output p-value matrix*/
+    /* Save the p-values to file at filePath */
     public static boolean outPvalMatrix(String filePath) throws Exception {
         boolean success = false;
         
@@ -404,10 +309,11 @@ public class Correlate {
         return success;
     }
     
+    /* Save the edge list to file at filePath */
     public static boolean outEdgeList(String filePath) throws Exception {
         boolean success = false;
         
-        /*try {
+        try {
             File file = new File(filePath);
             PrintWriter writer = new PrintWriter(file);
             EdgeList edgeList = getEdgeList();
@@ -421,20 +327,8 @@ public class Correlate {
             success = true;
         } catch (Exception e) {
             System.out.println(e);
-        }*/
-
-        try {
-            File file = new File(filePath);
-            PrintWriter writer = new PrintWriter(file);
-            EdgeList edgeList = getEdgeList();
-            for (String s : edgeList.getAllEntries()) {
-                writer.println(s);
-            }
-            writer.close();
-            success = true; 
-        } catch (Exception e) {
-            System.out.println(e);
         }
+
         return success;
     } 
     

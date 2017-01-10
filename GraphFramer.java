@@ -1,10 +1,10 @@
 /**
+* This class is taken directly from the GenEx Project
+*
 * GenEx GUI GraphFramer
 * Frame containing SingleGraph/DoubleGraph and GraphOptionPanel
 *
 * Depends: SingleGraph/DoubleGraph, GraphOptionPanel, Java Swing
-*
-* This class was taken from the GenEx Project - written by Rachel Xu '17
 **/
 
 /*import libraries*/

@@ -32,10 +32,6 @@ empty <- function(queue) {
 	while (!is.empty(queue)) {
 		dequeue(queue)
 	}
-	#queue <- new.queue()
-	#if (!is.empty(queue)){
-	#	queue <- new.queue()
-	#}
 }
 
 is.empty <- function(queue) {

@@ -1,15 +1,3 @@
-##GENE EXPRESSION PIPELINE R FUNCTION LIBRARY
-## Data correlation
-
-#Depends: data.table, Biobase, GEOquery
-#Imports: WGCNA
-
-#correlate data
-#codes modified from bigcor by A.N. Speiss, 2013
-#http://rmazing.wordpress.com/2013/02/22/bigcor-large-correlation-matrices-in-r/
-#second argument is a function used to correlated, template FXN(x, y)
-#See CORRELATION METHODS below
-
 # Some of the methods are from the GenEx Project - written by Rachel Xu '17
 
 ###source("queue.R")
@@ -44,23 +32,19 @@ corrData <- function(
     tau = 0.9
     )
 {
-	#Rprofmem("Rprofmem.txt")
-	#Rprof( tf <- "log.log")
 	edgeDF <- data.frame(index1=integer(), index2=integer(), pVal=double()) # create an empty dataframe
     corrEnv = tryCatch(
     { #correlation
-	    #convert data table to matrix
-	    #####x <- tableAsMatrix(aggDT)
 	    corrEnv <- new.env()
 	    corrEnv$index <- as.character(aggDT$Gene)
 
 	    x <- t(aggDT[, Gene := NULL])
 	    rownames(x) <- NULL
 
-	    ## calculate remainder, largest 'size'-divisible integer and block size
-	    NCOL <- ncol(x) # this is the number of columns
-	    DFR <- (nrow(x) - 2) #degrees of freedom: number of samples - 2
-	    LEN <- (NCOL * (NCOL - 1))/2 #length of triangular matrix
+
+	    NCOL <- ncol(x)
+	    DFR <- (nrow(x) - 2)
+	    LEN <- (NCOL * (NCOL - 1))/2 
 
 	    ## preallocate vectors and matrices of dimension into new environment
 	   
@@ -68,13 +52,11 @@ corrData <- function(
 	    corrEnv$corrVec <- vector(mode = 'numeric', length = LEN)
 
 	    #Data structures used for BFS:
-	    	#some sort of queue to order computation 
 	    visited <- logical(length = NCOL) #boolean array (visited) of size NCOL
 	    queue <- new.queue()
 	    visitCounter = 0
 	    lastCheckedIndex = 1 # R begins index at 1
 
-	   	#insert into queue gene 0
 	   	enqueue(queue, 1)
 	    while (visitCounter < NCOL) {
 	    	isPriority = FALSE
@@ -125,8 +107,7 @@ corrData <- function(
 			}
 	    }
 	    sendUpdatedEdgeList(edgeDF, corrEnv$index, TRUE)
-	    #Rprofmem ( NULL )
-	    #noquote(readLines("Rprofmem.txt"))
+
 	    return(corrEnv)
 
 	}, error = function(e) {
@@ -202,73 +183,15 @@ getPriorityGene <- function(array) {
 	return(index)
 }
 
-
-##CORRELATION METHODS
-#pearson correlation
-pearson <- function(x, y) {
-    corFast(x, y, use = 'pairwise.complete.obs')
-}
 #spearman correlation
 spearman <- function(x, y) {
     cor(x, y, method = 'spearman')
-}
-
-
-##CORRELATION HELPERS
-#transforms & converts aggregated data data.table to matrix
-tableAsMatrix <- function(aggDT) {
-	Gene <- 'Gene'
-	Probe <- 'Probe'
-	DT <- copy(aggDT)
-
-	#check if probes column exists; remove if so
-	if (!identical(aggDT$Probe, NULL)) {
-		#update column "Probe" to NULL - removes column "Probe"
-		DT <- DT[, Probe:= NULL]
-	}
-	#transpose matrix 
-		# update column "Gene" to NULL - removes column "Gene"
-	aggMat <- t(DT[, Gene := NULL])
-
-	# at this point, each column is a gene
-	rownames(aggMat) <- NULL
-	rm(DT)
-	return(aggMat)
-}
-#returns strict lower triangular matrix as vector
-retvec <- function(mat, N, v) {
-	.Call("retvec", mat, N, v)
-}
-
-#calculates P-value from correlation coefficient
-#NOT ADJUSTED FOR MULTIPLE COMPARISONS
-getp <- function(cor, df, pval) {
-	.Call("pval", cor, df, pval)
 }
 
 getp2 <- function(cor, df) {
 	pVec <- vector(mode = 'numeric', length = 1)
 	.Call("pval", cor, df, pVec)
 }
-
-#print('-------------------- test for corrData -------------------------------')
-#library(data.table)
-#library(WGCNA)
-
-#library(rJava)
-#.jinit() # this starts the JVM
-
-#.jaddClassPath("/Users/home_folder/Desktop/Princeton/Junior/Independent\ Work/source_file_original")
-#.jclassPath()
-#dyn.load("../src/pvalAndTriFunctions.so")
-#DT <- data.table(c(1, 2, 3), c(4, 5, 6), c(7, 8, 9))
-#GDS2771_suspect_cancer_aggregated_data
-#aggDT <- loadAggDT("~/Desktop/Princeton/Junior/Independent\ Work/aggregated_test_files/test_aggDT.csv")
-#corrEnv <- corrData(aggDT, -1 ,50)
-
-#print(testing())
-
-
 
 
 
